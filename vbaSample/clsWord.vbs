@@ -1,7 +1,12 @@
 Option Explicit
 
-Dim wdMainTextStory
-wdMainTextStory = 1
+'' load external vbs.
+Dim fso
+Set fso = createObject("Scripting.FileSystemObject")
+Execute fso.OpenTextFile(fso.getParentFolderName(WScript.ScriptFullName) & "\vbsConstants.vbs").ReadAll()
+
+''Dim wdMainTextStory
+const wdMainTextStory = 1 '' main story
 
 Dim vbTab, vbCrLf, vbLf
 vbTab = Chr(9)
@@ -10,7 +15,7 @@ vbLf = Chr(10)
 
 dim outputFileName
 dim inputFileName
-inputFileName = "C:\Users\maru\Desktop\word-tips\JP\md2docx.wd"
+inputFileName = "C:\home2\JP\training.wd"
 ''outputFileName = "C:\projects\markdown-to-docx\createDocsEx.vbs"
 dim fileList
 set fileList = new XFiles
@@ -25,56 +30,7 @@ call w.CreateWord(fileList)
 
 Class XWord
 
-' wdCommentsStory	4	
-' コメント ストーリー
 
-' wdEndnoteContinuationNoticeStory	17	
-' 文末脚注継続時の注のストーリー
-
-' wdEndnoteContinuationSeparatorStory	16	
-' 文末脚注継続時の境界線のストーリー
-
-' wdEndnoteSeparatorStory	15	
-' 文末脚注の境界線のストーリー
-
-' wdEndnotesStory	3	
-' 文末脚注のストーリー
-
-' wdEvenPagesFooterStory	8	
-' 偶数ページのフッターのストーリー
-
-' wdEvenPagesHeaderStory	6	
-' 偶数ページのヘッダーのストーリー
-
-' wdFirstPageFooterStory	11	
-' 先頭ページのフッターのストーリー
-
-' wdFirstPageHeaderStory	10	
-' 先頭ページのヘッダーのストーリー
-
-' wdFootnoteContinuationNoticeStory	14	
-' 脚注継続時の注のストーリー
-
-' wdFootnoteContinuationSeparatorStory	13	
-' 脚注継続時の境界線のストーリー
-
-' wdFootnoteSeparatorStory	12	
-' 脚注の境界線のストーリー
-
-' wdFootnotesStory	2	
-' 脚注のストーリー
-' Dim wdMainTextStory
-' wdMainTextStory = 1	
-' メイン テキスト ストーリー
-
-' wdPrimaryFooterStory	9	
-' 主フッターのストーリー
-
-' wdPrimaryHeaderStory	7	
-' 主ヘッダーのストーリー
-
-' wdTextFrameStory	5	
-' レイアウト枠のストーリー
  
     Public WordApp ''as Word.Application
     Public WordDoc ''as Word.Document
@@ -94,8 +50,10 @@ Class XWord
         Dim params ''As String
         Dim message ''as String
         For i = 1 To lines.Count
+            if i mod 10 = 0 Then
+                log i, i/lines.Count*100, ""
+            End if
             If lines.item(i) <> "" Then
-                WScript.Echo lines.item(i)
                 message = lines.item(i)
                 params = Split(message, vbTab)
                 Select Case params(0)
@@ -112,14 +70,14 @@ Class XWord
                     Case "tableCreate"
                         Dim columnWith ''As String()
                         Dim arrayInfo ''As String()
-                        arrayInfo = getTableInfoArray(lines, i, columnWith)
-                        Call Me.AddTable(arrayInfo, columnWith)
+                        Dim mergeInfo ''As String()
+                        arrayInfo = getTableInfoArray(lines, i, columnWith, mergeInfo)
+                        Call Me.AddTable(arrayInfo, columnWith, mergeInfo)
                     Case "image"
-                        Call Me.AddImage(message)
+                        Call Me.AddImage(params(1))
                     Case "text"
-                        Me.AddText (message)
+                        Me.AddText (params(1))
                     Case "dddd"
-                    
                 End Select
             End If
             
@@ -127,14 +85,13 @@ Class XWord
         Next
 
         WordApp.Visible = True
-        MsgBox Err.Description
+        if Err.Description <> "" Then
+            MsgBox Err.Description
+        End If
     End Sub
 
-
-
-    
     ''Function getTableInfoArray(lines As clsString, iCurrent As Long, columnWith() As String) As String()
-    Function getTableInfoArray(lines, iCurrent, columnWith) ''As String()
+    Function getTableInfoArray(lines, iCurrent, columnWith, mergeInfo) ''As String()
         Dim i ''as Long
         Dim iInfo ''as Long
 
@@ -144,6 +101,7 @@ Class XWord
         '' get create table and rows , columns
         Dim tableInfo ''As String()
         ReDim tableInfo(strSplit(1) - 1, strSplit(2) - 1)
+        ReDim mergeInfo(strSplit(1) - 1, strSplit(2) - 1)
         ReDim columnWith(strSplit(2) - 1)
         Dim cellCount ''as Long
         cellCount = CLng(strSplit(1)) * CLng(strSplit(2))
@@ -152,13 +110,15 @@ Class XWord
         Dim infoCount ''as Long
         infoCount = Split(lines.Item(iCurrent + 1), vbTab)(1)
         Dim strColumnWidth ''as String
-        strColumnWidth = strColumnWidth & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab & "1" & vbTab
+        '' column info is separate by comma
+        strColumnWidth = "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
         For i = 1 To infoCount
-            strColumnWidth = RegGetMessage(lines.Item(iCurrent + 2))
+            strColumnWidth = split(lines.Item(iCurrent + 2), vbTab)(1)
         Next
 
         For i = 0 To UBound(columnWith)
-            columnWith(i) = Split(strColumnWidth, vbTab)(i)
+            '' column info is separate by comma
+            columnWith(i) = Split(strColumnWidth, ",")(i)
         Next
 
         '' create table
@@ -166,9 +126,26 @@ Class XWord
             strSplit = Split(lines.Item(i), vbTab)
             tableInfo(CLng(strSplit(1)), CLng(strSplit(2))) = strSplit(3)
         Next
-        
+
         iCurrent = iCurrent + cellCount + 1
         getTableInfoArray = tableInfo
+
+        '' tableMarge
+        For i = iCurrent + 1  To 32000
+            strSplit = Split(lines.Item(i), vbTab)
+            if ubound(strSplit) > 4 then
+                if (strSplit(5)) <> "" then
+                    if strSplit(1) = strSplit(3) and strSplit(1) = strSplit(3) Then
+                        '
+                    else
+                        mergeInfo(CLng(strSplit(1)), CLng(strSplit(2))) = strSplit(3) & "," &  strSplit(4)
+                    end if
+                End if
+            else
+                exit for
+            End if
+            iCurrent = iCurrent + 1
+        Next
     End Function
 
 
@@ -224,18 +201,13 @@ Class XWord
     ''Sub AddImage(ByRef imagePath As String)
     Sub AddImage(ByRef imagePath)
         ''WordApp.Selection.InlineShapes.AddPicture fileName:= imagePath, LinkToFile:=False, SaveWithDocument:= True
-        WordApp.Selection.InlineShapes.AddPicture imagePath, False, False
+        WordApp.Selection.InlineShapes.AddPicture imagePath
         WordApp.Selection.Style = WordDoc.Styles("body1")
         WordApp.Selection.TypeText vbLf
     End Sub
 
-    sub test()
-        call WriteToFile()
-        AddTable
-    End sub
-
-    ''Sub AddTable(ByRef table() As String, columnWith() As String)
-    Sub AddTable(ByRef table(), columnWith())
+    ''Sub AddTable(ByRef table() As String, columnWith() As String, mergeInfo() as String)
+    Sub AddTable(table(), columnWith(), mergeInfo())
         WordApp.ActiveDocument.Range.InsertParagraphAfter
         'create table and asign it to variable
         Dim oTable ''as Word.table
@@ -256,21 +228,51 @@ Class XWord
         tableWidthSettings = 0
         For y = 1 To tableColumns
             tableWidth = tableWidth + oTable.columns(y).Width
-            tableWidthSettings = tableWidthSettings + CDbl(columnWith(y - 1))
+            tableWidthSettings = tableWidthSettings + CSng(columnWith(y - 1))
         Next
         
         'set table size
         For y = 1 To tableColumns
-            oTable.columns(y).Width = (tableWidth * 0.97) * CDbl(columnWith(y - 1)) / tableWidthSettings
+            oTable.columns(y).Width = (tableWidth * 0.97) * CSng(columnWith(y - 1)) / tableWidthSettings
+
+
+
         Next
         
         oTable.Style = "styleN"
+        dim MergeEnd
+        dim cellRange
         
         For x = 1 To tableRows
             For y = 1 To tableColumns
                 oTable.Cell(x, y).Range.text = table(x - 1, y - 1)
+
+                ' if  mergeInfo(x-1, y-1) <> "" Then
+                '     MergeEnd = split(mergeInfo(x-1, y-1), ",")
+                '     WordDoc.Range(oTable.Cell(x, y).Range.Start, oTable.Cell(clng(MergeEnd(0)), clng(MergeEnd(1))).Range.End).Cells.Merge
+                '     ''set cellRange = oTable.Cell(x, y)
+                '     ''cellRange.Merge oTable.Cell(clng(MergeEnd(0)), clng(MergeEnd(1)))
+                ' end if
             Next
         Next
+
+        For x = 1 To tableRows
+            For y = 1 To tableColumns
+                ' oTable.Cell(x, y).Range.text = table(x - 1, y - 1)
+
+                WScript.echo mergeInfo(x-1, y-1)
+                if  mergeInfo(x-1, y-1) <> "" Then
+                    MergeEnd = split(mergeInfo(x-1, y-1), ",")
+                    'WordDoc.Range(oTable.Cell(1, 1), oTable.Cell(1, 2)).Cells.Merge
+                    'oTable.Cell(x, y).Merge oTable.Cell(clng(MergeEnd(0)), clng(MergeEnd(1)))
+                    WScript.echo "Merge", x-1, y-1, MergeEnd(0), MergeEnd(1)
+                    oTable.Cell(x, y).Merge oTable.Cell(MergeEnd(0)+1, MergeEnd(1)+1)
+                end if
+            Next
+        Next
+
+
+        oTable.Style = "styleN"
         
         Dim r
         Set r = oTable.Range
@@ -370,5 +372,9 @@ Class XFiles
     End Sub
 End Class
 
+
+Sub Log(m1, m2, m3)
+    WScript.Echo "===>" & cstr(m1) & ":: " & cstr(m2) & ":: " & cstr(m3)
+End Sub
 
 
