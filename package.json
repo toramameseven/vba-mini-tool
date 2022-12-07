@@ -1,0 +1,86 @@
+{
+	"name": "vba-mini-tool",
+	"displayName": "vba-mini-tool",
+	"description": "Provide outline, definition",
+	"version": "0.0.1",
+	"publisher": "toramameseven",
+	"icon": "images/vba-mini-tool.png",
+	"author": {
+		"name": "toramame-seven"
+	},
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.71.0"
+	},
+	"galleryBanner": {
+		"color": "#C80000",
+		"theme": "dark"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"keywords": [
+		"vba",
+		"outline",
+		"definition"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/toramameseven/vba-tools.gitZZZ"
+	},
+	"activationEvents": [
+		"onLanguage:vb"
+	],
+	"main": "./client/out/extension",
+	"contributes": {
+		"configuration": {
+			"title": "vba mini tool",
+			"properties": {
+				"VbaMiniTool.maxNumberOfProblems": {
+					"scope": "resource",
+					"type": "number",
+					"default": 100,
+					"description": "Controls the maximum number of problems produced by the server."
+				},
+				"VbaMiniTool.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the language server."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"vscode:prepublish": "npm run esbuild-base -- --minify && npm run esbuild-base-server -- --minify",
+		"esbuild-base": "esbuild ./client/src/extension.ts --bundle --outfile=./client/out/extension.js --external:vscode --format=cjs --platform=node",
+		"esbuild-base-server": "esbuild ./server/src/server.ts --bundle --outfile=./server/out/server.js --external:vscode --format=cjs --platform=node",
+		"esbuild": "npm run esbuild-base -- --sourcemap && npm run esbuild-base-server -- --sourcemap",
+		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+		"package": "vsce package --target win32-x64",
+		"licenses": "npm run license1 && npm run license2 && npm run license3",
+		"license1": "npx license-report --package=./package.json --config=./license-report-config.json > USEDMODULES.md",
+		"license2": "npx license-report --package=./server/package.json --config=./license-report-config.json >> USEDMODULES.md",
+		"license3": "npx license-report --package=./client/package.json --config=./license-report-config.json >> USEDMODULES.md",
+		"clear": "rimraf ./client/out && rimraf ./server/out "
+	},
+	"devDependencies": {
+		"@types/mocha": "^9.1.0",
+		"@types/node": "^16.11.7",
+		"@typescript-eslint/eslint-plugin": "^5.30.0",
+		"@typescript-eslint/parser": "^5.30.0",
+		"esbuild": "^0.15.13",
+		"eslint": "^8.13.0",
+		"mocha": "^9.2.1",
+		"rimraf": "^3.0.2",
+		"ts-node": "^10.9.1",
+		"typescript": "^4.7.2"
+	}
+}

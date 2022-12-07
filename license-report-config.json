@@ -1,0 +1,10 @@
+{
+  "output": "markdown",
+  "fields": [
+      "name",
+      "licenseType",
+      "link",
+      "author"
+    ],
+	"package":"./package.json"
+}
