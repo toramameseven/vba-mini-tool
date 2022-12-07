@@ -179,6 +179,7 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
         return [moduleSymbol];
       }
     }
+    serverLog(LogKind.DEBUG, funcName, "return no list.");
   }
 
   for (const iUri of uris) {
@@ -195,6 +196,7 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
       // do only in a class
       symbolsInClass = mapUriSymbols?.get(iUri)?.filter((s) => s.kind === SymbolKind.Class);
     }
+    symbolsInClass = mapUriSymbols?.get(iUri)?.filter((s) => s.kind === SymbolKind.Class);
 
     // get public function symbols() in classes
     for (const iClass of symbolsInClass ?? []) {
@@ -203,9 +205,13 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
       );
       classFunctions.length > 0 && (symbolList = symbolList.concat(classFunctions));
     }
+
+    //
     moduleSymbol && (symbolList = symbolList.concat(moduleSymbol));
-    serverLog(LogKind.DEBUG, funcName, "get public function symbols() in classes.");
-    return symbolList;
+    if (symbolList.length) {
+      serverLog(LogKind.DEBUG, funcName, "get public function symbols() in classes.");
+      return symbolList;
+    }
   }
   serverLog(LogKind.DEBUG, funcName, "no symbols.");
 }

@@ -159,12 +159,13 @@ connection.onHover((params: HoverParams) => {
   const funcInfos = VbaParser.getTokenInfo(params.textDocument.uri, scopeFunction, word);
 
   if (!funcInfos || funcInfos?.length === 0) {
+    serverLog(LogKind.DEBUG, "hover no fun infos !!");
     return undefined;
   }
 
   const hoverContent = funcInfos[0].range.start;
   if (!hoverContent) {
-    serverLog(LogKind.NONE, "hover undefined!!");
+    serverLog(LogKind.DEBUG, "hover undefined!!");
     return undefined;
   }
 
