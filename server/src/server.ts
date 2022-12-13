@@ -154,9 +154,9 @@ connection.onHover((params: HoverParams) => {
   serverLog(LogKind.DEBUG, funcName, params.textDocument.uri);
 
   const word = getWordAtPosition(params.textDocument.uri, params.position);
-  const scopeFunction = getScope(params.textDocument.uri, params.position);
+  const scopes = getScope(params.textDocument.uri, params.position);
 
-  const funcInfos = VbaParser.getTokenInfo(params.textDocument.uri, scopeFunction, word);
+  const funcInfos = VbaParser.getTokenInfo(params.textDocument.uri, scopes, word);
 
   if (!funcInfos || funcInfos?.length === 0) {
     serverLog(LogKind.DEBUG, "hover no fun infos !!");
@@ -174,7 +174,7 @@ connection.onHover((params: HoverParams) => {
   const hover: Hover = {
     contents: { language: "vb", value: functionDefs },
   };
-  serverLog(LogKind.NONE, funcName, `${scopeFunction} : ${word}`);
+  serverLog(LogKind.NONE, funcName, `${scopes} : ${word}`);
   return hover;
 });
 
@@ -182,31 +182,38 @@ connection.onHover((params: HoverParams) => {
 function getScope(uri: string, position: Position): Scope {
   const funcName = "getScope";
   serverLog(LogKind.NONE, funcName, "in", uri);
-  const character = position.character;
   const document = documents.get(uri);
   let classScope = "";
   let functionScope = "";
-
   if (!document) {
     return { classScope, functionScope };
   }
 
+  const isVbs = uri.length > 3 && uri.slice(-3).toLowerCase() === "vbs";
+
+  // 8, (Function|Sub|Class)
+  // 7, (end)
+  // 6, (\w+)
+  // 5, (Function|Sub|class)
+  const functionRegex =
+    /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class)\s+(\w+)|^\s*(End)\s+(Function|Sub|Class)/i;
   for (let testLine = position.line; testLine > -1; testLine--) {
     const line = document.getText({
       start: { line: testLine, character: 0 },
       end: { line: testLine, character: integer.MAX_VALUE },
     });
 
-    const functionRegex =
-      /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class)\s+(\w+)|^\s*(End)\s+(Function|Sub|Class)/i;
     const matches = line.match(functionRegex);
     if (matches) {
       if (matches[7]?.toLowerCase() === "end" && matches[8]?.toLowerCase() === "class") {
         serverLog(LogKind.NONE, funcName, "match to End");
         classScope = matches[8];
+        // inside vbs class
         return { classScope, functionScope };
       } else if (!functionScope && matches[7]?.toLowerCase() === "end") {
+        // end function or end sub
         functionScope = matches[8];
+        // next class search
         serverLog(LogKind.NONE, funcName, "match to sub or function", matches[6]);
       } else if (!classScope && matches[5]?.toLowerCase() === "class") {
         classScope = matches[6];
@@ -214,6 +221,9 @@ function getScope(uri: string, position: Position): Scope {
       } else if (!functionScope) {
         functionScope = matches[6];
       }
+    }
+    if ((!!classScope && !!functionScope) || (!!functionScope && !isVbs)) {
+      break;
     }
   }
   return { classScope, functionScope };
@@ -223,11 +233,9 @@ function getScope(uri: string, position: Position): Scope {
 function getWordAtPosition(uri: string, position: Position) {
   const character = position.character;
   const document = documents.get(uri);
-  serverLog(LogKind.NONE, "character", character.toString());
-  serverLog(LogKind.NONE, "line", position.line.toString());
   const line = document?.getText({
     start: { line: position.line, character: 0 },
-    end: { line: position.line, character: 1000 },
+    end: { line: position.line, character: integer.MAX_VALUE },
   });
 
   if (!line) {
@@ -275,7 +283,6 @@ documents.listen(connection);
 // Listen on the connection
 connection.listen();
 
-// ssss
 export const LogKind = {
   NONE: 0,
   TRACE: 1,
@@ -285,9 +292,6 @@ export const LogKind = {
   ERROR: 16,
   FATAL: 32,
 } as const;
-
-const logKindFlg = [];
-
 export type LogKind = typeof LogKind[keyof typeof LogKind];
 
 //

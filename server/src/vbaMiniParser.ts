@@ -93,6 +93,16 @@ export function getTokenInfo(uri: string, scope: Scope, name: string, isMethod =
   }
 }
 
+// module
+// module variable
+// module function
+// module function variable
+
+// module class
+// module class    variable
+// module class    function
+// module class    function variable
+
 function getSymbolList(uri: string, scope: Scope, name: string, accessibility: Accessibility) {
   const funcName = "getSymbolList";
   serverLog(
@@ -102,23 +112,15 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
       scope.functionScope
     }  name: ${name} access: ${accessibility}`
   );
+
+  const isVbs = uri.length > 3 && uri.slice(-3).toLowerCase() === "vbs";
   const privateUri = accessibility === Accessibility.private ? [uri] : [];
   const uris = accessibility === Accessibility.public ? mapUriSymbols.keys() : [];
 
-  let symbolList: LangSymbol[] = [];
+  const symbolList: LangSymbol[] = [];
 
-  // c f
-  // 0, 0 , public bal, // module val
-  // 0, 1 , public bal, // module val, module func,                          // local val
-  // 1, 0 , public bal, // module val,              // class val
-  // 1, 1 , public bal, // module val, module func, // class func, class val // class local val
-
-  // loop all files
+  // loop all files, but one file.
   for (const iUri of privateUri) {
-    if (accessibility === Accessibility.public && stringEq(uri, iUri) && !scope.classScope) {
-      continue;
-    }
-
     // local val
     if (scope.functionScope && !scope.classScope) {
       let moduleSymbol = mapUriSymbols
@@ -138,7 +140,7 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
     }
 
     //class local val
-    if (scope.functionScope && scope.classScope) {
+    if (scope.functionScope && scope.classScope && isVbs) {
       let moduleSymbol = mapUriSymbols
         ?.get(iUri)
         ?.find((s) => stringEq(s.name, scope.classScope))
@@ -160,7 +162,7 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
     }
 
     //class val class func
-    if (!scope.functionScope && scope.classScope) {
+    if (!scope.functionScope && scope.classScope && isVbs) {
       const moduleSymbol = mapUriSymbols
         ?.get(iUri)
         ?.find((s) => stringEq(s.name, scope.classScope))
@@ -175,43 +177,53 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
     if (!scope.functionScope && !scope.classScope) {
       const moduleSymbol = mapUriSymbols?.get(iUri)?.find((s) => stringEq(s.name, name));
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return module func val.");
+        serverLog(LogKind.DEBUG, funcName, "return function or variable in a module.");
         return [moduleSymbol];
       }
     }
     serverLog(LogKind.DEBUG, funcName, "return no list.");
   }
 
+  // for public
+  let moduleSymbolPublic: LangSymbol[] | undefined = [];
   for (const iUri of uris) {
+    serverLog(LogKind.DEBUG, funcName, iUri);
+
     // public
     // get topLevel symbols() ie. variable, function, class
-    const moduleSymbol = mapUriSymbols
+    const topLevelSymbols = mapUriSymbols
       ?.get(iUri)
       ?.filter((s) => stringEq(s.name, name))
       ?.filter((s) => s.accessibility === accessibility);
+    if (topLevelSymbols && topLevelSymbols.length) {
+      serverLog(LogKind.DEBUG, funcName, "get topLevel symbols in public. class, function, variable");
+      moduleSymbolPublic = moduleSymbolPublic.concat(topLevelSymbols);
+    }
 
+    // public
     // get class symbols
-    let symbolsInClass: LangSymbol[] | undefined;
-    if (scope.classScope) {
+    if (isVbs) {
       // do only in a class
-      symbolsInClass = mapUriSymbols?.get(iUri)?.filter((s) => s.kind === SymbolKind.Class);
-    }
-    symbolsInClass = mapUriSymbols?.get(iUri)?.filter((s) => s.kind === SymbolKind.Class);
+      const symbolsInClass = mapUriSymbols?.get(iUri)?.filter((s) => s.kind === SymbolKind.Class);
 
-    // get public function symbols() in classes
-    for (const iClass of symbolsInClass ?? []) {
-      const classFunctions = iClass.child.filter(
-        (s) => stringEq(s.name, name) && s.accessibility === Accessibility.public
-      );
-      classFunctions.length > 0 && (symbolList = symbolList.concat(classFunctions));
-    }
+      // get public functions and variables in class
+      // local variables are open to outside
+      for (const iClass of symbolsInClass ?? []) {
+        const classFunctions = iClass.child.filter(
+          (s) => stringEq(s.name, name) && s.accessibility === Accessibility.public
+        );
 
-    //
-    moduleSymbol && (symbolList = symbolList.concat(moduleSymbol));
-    if (symbolList.length) {
-      serverLog(LogKind.DEBUG, funcName, "get public function symbols() in classes.");
-      return symbolList;
+        if (!!classFunctions && !!classFunctions.length) {
+          serverLog(LogKind.DEBUG, funcName, "get public function or variable in classes.");
+          moduleSymbolPublic = moduleSymbolPublic?.concat(classFunctions);
+        }
+      }
     }
+  }
+
+  //
+  if (moduleSymbolPublic && moduleSymbolPublic.length) {
+    return moduleSymbolPublic;
   }
   serverLog(LogKind.DEBUG, funcName, "no symbols.");
 }
