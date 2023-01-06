@@ -1,11 +1,20 @@
-import { Position, Range, TextDocument } from "vscode-languageserver-textdocument";
+import {
+  Position,
+  Range,
+  TextDocument,
+} from "vscode-languageserver-textdocument";
 
 import * as path from "path";
 import { serverLog, documents, LogKind, Scope } from "./server";
 import * as fse from "fs-extra";
 import * as Encoding from "encoding-japanese";
 import { fileURLToPath, pathToFileURL } from "url";
-import { Diagnostic, DiagnosticSeverity, DocumentSymbol, SymbolKind } from "vscode-languageserver";
+import {
+  Diagnostic,
+  DiagnosticSeverity,
+  DocumentSymbol,
+  SymbolKind,
+} from "vscode-languageserver";
 import { URI } from "vscode-uri";
 import { ByteLengthQueuingStrategy } from "stream/web";
 import { isVariableDeclaration } from "typescript";
@@ -74,7 +83,12 @@ export async function getDocumentSymbol(uri: string) {
   }
 }
 
-export function getTokenInfo(uri: string, scope: Scope, name: string, isMethod = false) {
+export function getTokenInfo(
+  uri: string,
+  scope: Scope,
+  name: string,
+  isMethod = false
+) {
   const funcName = "getFunctionInfo";
   serverLog(LogKind.DEBUG, funcName, name);
 
@@ -103,19 +117,27 @@ export function getTokenInfo(uri: string, scope: Scope, name: string, isMethod =
 // module class    function
 // module class    function variable
 
-function getSymbolList(uri: string, scope: Scope, name: string, accessibility: Accessibility) {
+function getSymbolList(
+  uri: string,
+  scope: Scope,
+  name: string,
+  accessibility: Accessibility
+) {
   const funcName = "getSymbolList";
   serverLog(
     LogKind.DEBUG,
     funcName,
-    `file: ${path.basename(uri)} classScope: ${scope.classScope}  functionScope: ${
+    `file: ${path.basename(uri)} classScope: ${
+      scope.classScope
+    }  functionScope: ${
       scope.functionScope
     }  name: ${name} access: ${accessibility}`
   );
 
   const isVbs = uri.length > 3 && uri.slice(-3).toLowerCase() === "vbs";
   const privateUri = accessibility === Accessibility.private ? [uri] : [];
-  const uris = accessibility === Accessibility.public ? mapUriSymbols.keys() : [];
+  const uris =
+    accessibility === Accessibility.public ? mapUriSymbols.keys() : [];
 
   const symbolList: LangSymbol[] = [];
 
@@ -132,7 +154,9 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
         return [moduleSymbol];
       }
 
-      moduleSymbol = mapUriSymbols?.get(iUri)?.find((s) => stringEq(s.name, name));
+      moduleSymbol = mapUriSymbols
+        ?.get(iUri)
+        ?.find((s) => stringEq(s.name, name));
       if (moduleSymbol) {
         serverLog(LogKind.DEBUG, funcName, "return local func.");
         return [moduleSymbol];
@@ -175,9 +199,15 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
 
     //module val module func
     if (!scope.functionScope && !scope.classScope) {
-      const moduleSymbol = mapUriSymbols?.get(iUri)?.find((s) => stringEq(s.name, name));
+      const moduleSymbol = mapUriSymbols
+        ?.get(iUri)
+        ?.find((s) => stringEq(s.name, name));
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return function or variable in a module.");
+        serverLog(
+          LogKind.DEBUG,
+          funcName,
+          "return function or variable in a module."
+        );
         return [moduleSymbol];
       }
     }
@@ -196,7 +226,11 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
       ?.filter((s) => stringEq(s.name, name))
       ?.filter((s) => s.accessibility === accessibility);
     if (topLevelSymbols && topLevelSymbols.length) {
-      serverLog(LogKind.DEBUG, funcName, "get topLevel symbols in public. class, function, variable");
+      serverLog(
+        LogKind.DEBUG,
+        funcName,
+        "get topLevel symbols in public. class, function, variable"
+      );
       moduleSymbolPublic = moduleSymbolPublic.concat(topLevelSymbols);
     }
 
@@ -204,17 +238,24 @@ function getSymbolList(uri: string, scope: Scope, name: string, accessibility: A
     // get class symbols
     if (isVbs) {
       // do only in a class
-      const symbolsInClass = mapUriSymbols?.get(iUri)?.filter((s) => s.kind === SymbolKind.Class);
+      const symbolsInClass = mapUriSymbols
+        ?.get(iUri)
+        ?.filter((s) => s.kind === SymbolKind.Class);
 
       // get public functions and variables in class
       // local variables are open to outside
       for (const iClass of symbolsInClass ?? []) {
         const classFunctions = iClass.child.filter(
-          (s) => stringEq(s.name, name) && s.accessibility === Accessibility.public
+          (s) =>
+            stringEq(s.name, name) && s.accessibility === Accessibility.public
         );
 
         if (!!classFunctions && !!classFunctions.length) {
-          serverLog(LogKind.DEBUG, funcName, "get public function or variable in classes.");
+          serverLog(
+            LogKind.DEBUG,
+            funcName,
+            "get public function or variable in classes."
+          );
           moduleSymbolPublic = moduleSymbolPublic?.concat(classFunctions);
         }
       }
@@ -258,15 +299,18 @@ async function parseFiles(uri: string) {
         mapUriSymbols.set(uriAtFolder, r);
       } else {
         mapUriSymbols.set(uriAtFolder, oldMapUriSymbols.get(uriAtFolder)!);
-        mapUriDiagnostic.set(uriAtFolder, oldMapUriDiagnostic.get(uriAtFolder)!);
+        mapUriDiagnostic.set(
+          uriAtFolder,
+          oldMapUriDiagnostic.get(uriAtFolder)!
+        );
       }
     }
   }
 }
 
 async function parseFile(uri: string) {
-  let text = documents.get(uri);
-  if (!text) {
+  let fileContents = documents.get(uri);
+  if (!fileContents) {
     const fileFs = URI.parse(uri).fsPath.toString();
     const textFs = fse.readFileSync(fileFs);
     let docFile = Encoding.convert(textFs, {
@@ -275,7 +319,7 @@ async function parseFile(uri: string) {
     });
 
     docFile = docFile.replace(/\r/g, "");
-    text = TextDocument.create(uri, "vb", 0, docFile);
+    fileContents = TextDocument.create(uri, "vb", 0, docFile);
   }
 
   const { extensionType, moduleName } = getModuleInfo(uri);
@@ -297,18 +341,22 @@ async function parseFile(uri: string) {
     parent: "",
   };
 
-  const symbols: LangSymbol[] = [];
   const parentTree: LangSymbol[] = [];
   parentTree.push(symbol);
 
   const diagnostic: Diagnostic[] = [];
   try {
-    for (let line = 0; line < text.lineCount; line++) {
-      const r = {
-        start: { line, character: 0 },
-        end: { line, character: 1000 },
-      };
-      parseLine(text.uri, text.getText(r), line, parentTree, diagnostic);
+    for (let line = 0; line < fileContents.lineCount; line++) {
+      const currentLine = getLineAt(fileContents, line);
+      const multiLine = getMultiLineAt(currentLine, fileContents, line);
+      parseLine(
+        fileContents.uri,
+        multiLine.context,
+        line,
+        parentTree,
+        diagnostic
+      );
+      line = multiLine.line;
     }
   } catch (e) {
     console.log(e);
@@ -316,8 +364,47 @@ async function parseFile(uri: string) {
   return symbol.child;
 }
 
+function getMultiLineAt(
+  currentLine: string,
+  fileContents: TextDocument,
+  line: number
+) {
+  let r = currentLine;
+  let rLine = line;
+  if (r.length > 0 && r.slice(-1) === "_") {
+    r = r.slice(0, -1);
+    for (let line2 = line + 1; line2 < fileContents.lineCount; line2++) {
+      const nextLine = getLineAt(fileContents, line2);
+      if (nextLine.length > 0 && nextLine.slice(-1) === "_") {
+        r += nextLine.slice(0, -1);
+      } else {
+        r += nextLine;
+        rLine = line2;
+        break;
+      }
+    }
+  }
+  return { context: r, line: rLine };
+}
+
+function getLineAt(fileContents: TextDocument, line: number) {
+  const r = {
+    start: { line, character: 0 },
+    end: { line, character: Number.MAX_VALUE },
+  };
+  let currentLine = fileContents.getText(r);
+  currentLine = currentLine.replace(/'[^"\n]*$/gm, "").trim();
+  return currentLine;
+}
+
 //
-function parseLine(uri: string, contentLine: string, line: number, parentTree: LangSymbol[], diagnostic: Diagnostic[]) {
+function parseLine(
+  uri: string,
+  contentLine: string,
+  line: number,
+  parentTree: LangSymbol[],
+  diagnostic: Diagnostic[]
+) {
   const commentReg = /'[^"\n]*$/gm;
   let currentLine = contentLine.replace(commentReg, "");
   if (contentLine !== currentLine) {
@@ -328,11 +415,18 @@ function parseLine(uri: string, contentLine: string, line: number, parentTree: L
   currentLine = parseEnd(uri, currentLine, line, parentTree, diagnostic);
 }
 
-function parseEnd(uri: string, contentLine: string, line: number, parentTree: LangSymbol[], diagnostic: Diagnostic[]) {
+function parseEnd(
+  uri: string,
+  contentLine: string,
+  line: number,
+  parentTree: LangSymbol[],
+  diagnostic: Diagnostic[]
+) {
   if (!contentLine) {
     return "";
   }
-  const endRegex = /^\s*((End)\s+)((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|Class)/i;
+  const endRegex =
+    /^\s*((End)\s+)((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|Class)/i;
   const endMatches = contentLine.match(endRegex);
   if (endMatches) {
     parentTree.pop();
@@ -358,7 +452,9 @@ function parseFunction(
   if (functionMatches) {
     const accessibilityString = functionMatches[2]?.toLowerCase();
     const accessibility: Accessibility =
-      accessibilityString === "private" ? Accessibility.private : Accessibility.public;
+      accessibilityString === "private"
+        ? Accessibility.private
+        : Accessibility.public;
     const rangeFunc: Range = {
       start: { line: line, character: 0 },
       end: { line: line, character: 0 },
@@ -366,7 +462,9 @@ function parseFunction(
     const { extensionType, moduleName } = getModuleInfo(uri);
     const posDeclare = functionMatches[4]?.toString().toLowerCase() ?? "";
     const isDeclare = ["declare", "decare ptrsafe"].includes(posDeclare);
-    let kind: SymbolKind = stringEq(functionMatches[5], "class") ? SymbolKind.Class : SymbolKind.Function;
+    let kind: SymbolKind = stringEq(functionMatches[5], "class")
+      ? SymbolKind.Class
+      : SymbolKind.Function;
     kind = isDeclare ? SymbolKind.Interface : kind;
     const symbol: LangSymbol = {
       uri,
@@ -396,7 +494,11 @@ function parseFunction(
   return contentLine;
 }
 
-function parseVariable(line: number, contentLine: string, parentTree: LangSymbol[]) {
+function parseVariable(
+  line: number,
+  contentLine: string,
+  parentTree: LangSymbol[]
+) {
   serverLog(LogKind.NONE, "getParameterOrDim Line", contentLine);
 
   if (!contentLine) {
@@ -417,7 +519,10 @@ function parseVariable(line: number, contentLine: string, parentTree: LangSymbol
   }
 
   if (result_array) {
-    const kind = result_array[4] && stringEq(result_array[4], "const") ? SymbolKind.Constant : SymbolKind.Variable;
+    const kind =
+      result_array[4] && stringEq(result_array[4], "const")
+        ? SymbolKind.Constant
+        : SymbolKind.Variable;
     const parameters = splitParameters(result_array[5]);
     for (let i = 0; i < parameters.length; i++) {
       //const accessibility = result_array[1] ? result_array[1] : Accessibility.public;
@@ -445,7 +550,11 @@ function parseVariable(line: number, contentLine: string, parentTree: LangSymbol
   return contentLine;
 }
 
-function getFunctionParameter(line: number, contentLine: string | undefined, parentTree: LangSymbol[]) {
+function getFunctionParameter(
+  line: number,
+  contentLine: string | undefined,
+  parentTree: LangSymbol[]
+) {
   if (!contentLine) {
     return;
   }
@@ -479,7 +588,8 @@ export function splitParameters(parameters: string) {
 
   const parametersReturn = parameterList
     .map((p) => {
-      const regex2 = /(optional\s+)?((ByVal|ByRef)\s+)?(\w+)(\(.*\))?(\s+As\s\w+)*/i;
+      const regex2 =
+        /(optional\s+)?((ByVal|ByRef)\s+)?(\w+)(\(.*\))?(\s+As\s\w+)*/i;
       const match = p.match(regex2);
       if (match) {
         return match[4];
