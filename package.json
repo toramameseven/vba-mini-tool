@@ -1,7 +1,7 @@
 {
 	"name": "vba-mini-tool",
-	"displayName": "vba-mini-tool",
-	"description": "Provide outline, definition",
+	"displayName": "vba mini tool",
+	"description": "Provide outline and  definition",
 	"version": "0.0.1",
 	"publisher": "toramameseven",
 	"icon": "images/vba-mini-tool.png",
@@ -26,7 +26,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/toramameseven/vba-tools.gitZZZ"
+		"url": "https://github.com/toramameseven/vba-mini-tool"
 	},
 	"activationEvents": [
 		"onLanguage:vb"
@@ -65,11 +65,8 @@
 		"esbuild": "npm run esbuild-base -- --sourcemap && npm run esbuild-base-server -- --sourcemap",
 		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
 		"package": "vsce package --target win32-x64",
-		"licenses": "npm run license1 && npm run license2 && npm run license3",
-		"license1": "npx license-report --package=./package.json --config=./license-report-config.json > USEDMODULES.md",
-		"license2": "npx license-report --package=./server/package.json --config=./license-report-config.json >> USEDMODULES.md",
-		"license3": "npx license-report --package=./client/package.json --config=./license-report-config.json >> USEDMODULES.md",
-		"clear": "rimraf ./client/out && rimraf ./server/out "
+		"clear": "rimraf ./client/out && rimraf ./server/out ",
+		"installVSIX": "code --install-extension vba-mini-tool-win32-x64-0.0.1.vsix"
 	},
 	"devDependencies": {
 		"@types/mocha": "^9.1.0",

@@ -40,7 +40,9 @@ import * as VbaParser from "./vbaMiniParser";
 export const connection = createConnection(ProposedFeatures.all);
 
 // Create a simple text document manager.
-export const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+export const documents: TextDocuments<TextDocument> = new TextDocuments(
+  TextDocument
+);
 
 export type Scope = { classScope: string; functionScope: string };
 
@@ -55,8 +57,12 @@ connection.onInitialize((params: InitializeParams) => {
 
   // Does the client support the `workspace/configuration` request?
   // If not, we fall back using global settings.
-  hasConfigurationCapability = !!(capabilities.workspace && !!capabilities.workspace.configuration);
-  hasWorkspaceFolderCapability = !!(capabilities.workspace && !!capabilities.workspace.workspaceFolders);
+  hasConfigurationCapability = !!(
+    capabilities.workspace && !!capabilities.workspace.configuration
+  );
+  hasWorkspaceFolderCapability = !!(
+    capabilities.workspace && !!capabilities.workspace.workspaceFolders
+  );
   hasDiagnosticRelatedInformationCapability = !!(
     capabilities.textDocument &&
     capabilities.textDocument.publishDiagnostics &&
@@ -90,7 +96,10 @@ connection.onInitialize((params: InitializeParams) => {
 connection.onInitialized(() => {
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
-    connection.client.register(DidChangeConfigurationNotification.type, undefined);
+    connection.client.register(
+      DidChangeConfigurationNotification.type,
+      undefined
+    );
   }
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
@@ -114,7 +123,11 @@ connection.onDefinition((params: DefinitionParams) => {
   serverLog(LogKind.NONE, funcName, params.textDocument.uri);
   const word = getWordAtPosition(params.textDocument.uri, params.position);
   const scopes = getScope(params.textDocument.uri, params.position);
-  const funcInfos = VbaParser.getTokenInfo(params.textDocument.uri, scopes, word);
+  const funcInfos = VbaParser.getTokenInfo(
+    params.textDocument.uri,
+    scopes,
+    word
+  );
 
   if (!funcInfos || funcInfos?.length === 0) {
     serverLog(LogKind.NONE, "definition undefined!!");
@@ -156,7 +169,11 @@ connection.onHover((params: HoverParams) => {
   const word = getWordAtPosition(params.textDocument.uri, params.position);
   const scopes = getScope(params.textDocument.uri, params.position);
 
-  const funcInfos = VbaParser.getTokenInfo(params.textDocument.uri, scopes, word);
+  const funcInfos = VbaParser.getTokenInfo(
+    params.textDocument.uri,
+    scopes,
+    word
+  );
 
   if (!funcInfos || funcInfos?.length === 0) {
     serverLog(LogKind.DEBUG, "hover no fun infos !!");
@@ -205,7 +222,10 @@ function getScope(uri: string, position: Position): Scope {
 
     const matches = line.match(functionRegex);
     if (matches) {
-      if (matches[7]?.toLowerCase() === "end" && matches[8]?.toLowerCase() === "class") {
+      if (
+        matches[7]?.toLowerCase() === "end" &&
+        matches[8]?.toLowerCase() === "class"
+      ) {
         serverLog(LogKind.NONE, funcName, "match to End");
         classScope = matches[8];
         // inside vbs class
@@ -214,7 +234,12 @@ function getScope(uri: string, position: Position): Scope {
         // end function or end sub
         functionScope = matches[8];
         // next class search
-        serverLog(LogKind.NONE, funcName, "match to sub or function", matches[6]);
+        serverLog(
+          LogKind.NONE,
+          funcName,
+          "match to sub or function",
+          matches[6]
+        );
       } else if (!classScope && matches[5]?.toLowerCase() === "class") {
         classScope = matches[6];
         return { classScope, functionScope };
@@ -267,7 +292,10 @@ documents.onDidChangeContent((change) => {
 
 //
 connection.onDidChangeTextDocument((handler) => {
-  serverLog(LogKind.NONE, `onDidChangeTextDocument: ${handler.textDocument.uri}`);
+  serverLog(
+    LogKind.NONE,
+    `onDidChangeTextDocument: ${handler.textDocument.uri}`
+  );
 });
 
 //
@@ -295,7 +323,12 @@ export const LogKind = {
 export type LogKind = typeof LogKind[keyof typeof LogKind];
 
 //
-export function serverLog(logKind: LogKind, title: string, message = "", message2 = "") {
+export function serverLog(
+  logKind: LogKind,
+  title: string,
+  message = "",
+  message2 = ""
+) {
   if (logKind === LogKind.DEBUG) {
     connection.console.log(
       `====> : ${new Date().toLocaleTimeString()}  : ${
