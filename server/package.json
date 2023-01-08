@@ -1,0 +1,36 @@
+{
+	"name": "vba-mini-tool-server",
+	"description": "vba-mini-tool-server",
+	"version": "0.0.1",
+	"author": "toramameseven",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"dependencies": {
+		"@types/chai": "^4.3.3",
+		"chai": "^4.3.6",
+		"encoding-japanese": "^2.0.0",
+		"fs-extra": "^10.1.0",
+		"rewire": "^6.0.0",
+		"ts-node": "^10.9.1",
+		"vscode-languageserver": "^7.0.0",
+		"vscode-languageserver-textdocument": "^1.0.4",
+		"vscode-uri": "^3.0.6"
+	},
+	"scripts": {
+		"test": "mocha -r ts-node/register src/test/**/*.ts",
+		"vscode:prepublish": "npm run esbuild-base -- --minify",
+		"esbuild-base": "esbuild ./src/server.ts --bundle --outfile=./out/server.js --external:vscode --format=cjs --platform=node",
+		"esbuild": "npm run esbuild-base -- --sourcemap",
+		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+		"test-compile": "tsc -p ./"
+	},
+	"devDependencies": {
+		"@types/encoding-japanese": "^2.0.1",
+		"@types/fs-extra": "^9.0.13",
+		"@types/rewire": "^2.5.28",
+		"esbuild": "^0.15.13",
+		"mocha": "^10.1.0"
+	}
+}
