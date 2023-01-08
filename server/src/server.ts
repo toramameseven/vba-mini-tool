@@ -34,6 +34,7 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import * as VbaParser from "./vbaMiniParser";
+import path = require("path");
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -52,7 +53,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 //
 connection.onInitialize((params: InitializeParams) => {
-  serverLog(LogKind.NONE, "onInitialize");
+  serverLog(LogKind.TRACE, "onInitialize");
   const capabilities = params.capabilities;
 
   // Does the client support the `workspace/configuration` request?
@@ -103,16 +104,16 @@ connection.onInitialized(() => {
   }
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
-      serverLog(LogKind.NONE, "Workspace folder change event received.");
+      serverLog(LogKind.TRACE, "Workspace folder change event received.");
     });
   }
-  serverLog(LogKind.NONE, "onInitialized OK!!");
+  serverLog(LogKind.INFO, "onInitialized OK!!");
 });
 
 //
 connection.onDocumentSymbol((params: DocumentSymbolParams) => {
   // uri file:///c%3A/projects/hub-toramame/lsp-sample-vba/vbaSample/test.bas
-  serverLog(LogKind.NONE, "onDocumentSymbol", params.textDocument.uri);
+  serverLog(LogKind.TRACE, "onDocumentSymbol", params.textDocument.uri);
   const symbols = VbaParser.getDocumentSymbol(params.textDocument.uri);
   return symbols;
 });
@@ -120,33 +121,38 @@ connection.onDocumentSymbol((params: DocumentSymbolParams) => {
 //
 connection.onDefinition((params: DefinitionParams) => {
   const funcName = "connection.onDefinition";
-  serverLog(LogKind.NONE, funcName, params.textDocument.uri);
-  const word = getWordAtPosition(params.textDocument.uri, params.position);
+  serverLog(LogKind.TRACE, funcName, params.textDocument.uri);
+  const { word, isFunction } = getWordAtPosition(
+    params.textDocument.uri,
+    params.position
+  );
   const scopes = getScope(params.textDocument.uri, params.position);
   const funcInfos = VbaParser.getTokenInfo(
     params.textDocument.uri,
     scopes,
-    word
+    word,
+    isFunction
   );
 
   if (!funcInfos || funcInfos?.length === 0) {
-    serverLog(LogKind.NONE, "definition undefined!!");
+    serverLog(LogKind.TRACE, "definition undefined!!");
     return undefined;
   }
 
   const definitionContent = funcInfos[0].range.start;
   if (!definitionContent) {
-    serverLog(LogKind.NONE, "definition undefined!!");
+    serverLog(LogKind.TRACE, "definition undefined!!");
     return undefined;
   }
 
   const definition: Location[] = funcInfos.map((s) => {
-    serverLog(1, funcName, "uri", s.uri);
+    serverLog(LogKind.DEBUG, funcName, "uri", s.uri);
     return { uri: s.uri, range: s.range };
   });
   return definition;
 });
 
+// now not use.
 connection.onDidChangeConfiguration((change) => {
   if (hasConfigurationCapability) {
     // Reset all cached document settings
@@ -156,7 +162,7 @@ connection.onDidChangeConfiguration((change) => {
     //   (change.settings.languageServerExample || defaultSettings)
     // );
   }
-  serverLog(LogKind.ERROR, "onDidChangeConfiguration");
+  serverLog(LogKind.INFO, "onDidChangeConfiguration");
   // Revalidate all open text documents
   //documents.all().forEach(validateTextDocument);
 });
@@ -166,13 +172,19 @@ connection.onHover((params: HoverParams) => {
   const funcName = "connection.onHover";
   serverLog(LogKind.DEBUG, funcName, params.textDocument.uri);
 
-  const word = getWordAtPosition(params.textDocument.uri, params.position);
-  const scopes = getScope(params.textDocument.uri, params.position);
+  const { word, isFunction } = getWordAtPosition(
+    params.textDocument.uri,
+    params.position
+  );
+  const scopes = getScope(params.textDocument.uri, params.position); //
 
   const funcInfos = VbaParser.getTokenInfo(
     params.textDocument.uri,
     scopes,
-    word
+    word,
+    // function: f()
+    // method: a.f()
+    isFunction
   );
 
   if (!funcInfos || funcInfos?.length === 0) {
@@ -186,19 +198,23 @@ connection.onHover((params: HoverParams) => {
     return undefined;
   }
 
-  const functionDefs = funcInfos.map((f) => f.functionDef).join("\n");
+  const defs = funcInfos.length;
+  // if detects multi defs, add moduleName.
+  const functionDefs = funcInfos
+    .map((f) => f.functionDef + (defs > 1 ? ": " + path.basename(f.uri) : ""))
+    .join("\n");
 
   const hover: Hover = {
     contents: { language: "vb", value: functionDefs },
   };
-  serverLog(LogKind.NONE, funcName, `${scopes} : ${word}`);
+  serverLog(LogKind.TRACE, funcName, `${scopes} : ${word}`);
   return hover;
 });
 
 //
 function getScope(uri: string, position: Position): Scope {
   const funcName = "getScope";
-  serverLog(LogKind.NONE, funcName, "in", uri);
+  serverLog(LogKind.TRACE, funcName, "in", uri);
   const document = documents.get(uri);
   let classScope = "";
   let functionScope = "";
@@ -226,7 +242,7 @@ function getScope(uri: string, position: Position): Scope {
         matches[7]?.toLowerCase() === "end" &&
         matches[8]?.toLowerCase() === "class"
       ) {
-        serverLog(LogKind.NONE, funcName, "match to End");
+        serverLog(LogKind.TRACE, funcName, "match to End");
         classScope = matches[8];
         // inside vbs class
         return { classScope, functionScope };
@@ -235,7 +251,7 @@ function getScope(uri: string, position: Position): Scope {
         functionScope = matches[8];
         // next class search
         serverLog(
-          LogKind.NONE,
+          LogKind.TRACE,
           funcName,
           "match to sub or function",
           matches[6]
@@ -264,10 +280,10 @@ function getWordAtPosition(uri: string, position: Position) {
   });
 
   if (!line) {
-    return "";
+    return { word: "", isFunction: false };
   }
 
-  const functionRegex = /\w+/g;
+  const functionRegex = /\.?\w+/g;
   let lastMatch = "";
   let lastStart = 0;
   let lastEnd = 0;
@@ -275,25 +291,27 @@ function getWordAtPosition(uri: string, position: Position) {
   for (const m of (line + " dummy").matchAll(functionRegex)) {
     const matchIndex = m.index ?? 0;
     if (lastStart <= character && character < lastEnd) {
-      return lastMatch;
+      const isMethod = lastMatch.length > 0 && lastMatch[0] === ".";
+      const word = isMethod ? lastMatch.slice(1) : lastMatch;
+      return { word, isFunction: !isMethod };
     }
     lastMatch = m[0];
     lastStart = matchIndex;
     lastEnd = matchIndex + lastMatch.length;
   }
-  return "";
+  return { word: "", isFunction: false };
 }
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
-  serverLog(LogKind.NONE, `onDidChangeContent: ${change.document.uri}`);
+  serverLog(LogKind.TRACE, `onDidChangeContent: ${change.document.uri}`);
 });
 
 //
 connection.onDidChangeTextDocument((handler) => {
   serverLog(
-    LogKind.NONE,
+    LogKind.TRACE,
     `onDidChangeTextDocument: ${handler.textDocument.uri}`
   );
 });
@@ -301,7 +319,7 @@ connection.onDidChangeTextDocument((handler) => {
 //
 connection.onDidChangeWatchedFiles((_change) => {
   // Monitored files have change in VSCode
-  serverLog(LogKind.NONE, "onDidChangeWatchedFiles");
+  serverLog(LogKind.TRACE, "onDidChangeWatchedFiles");
 });
 
 // Make the text document manager listen on the connection
@@ -315,10 +333,10 @@ export const LogKind = {
   NONE: 0,
   TRACE: 1,
   DEBUG: 2,
-  INFO: 4,
-  WARN: 8,
-  ERROR: 16,
-  FATAL: 32,
+  INFO: 3,
+  WARN: 4,
+  ERROR: 5,
+  FATAL: 6,
 } as const;
 export type LogKind = typeof LogKind[keyof typeof LogKind];
 
@@ -329,7 +347,7 @@ export function serverLog(
   message = "",
   message2 = ""
 ) {
-  if (logKind === LogKind.DEBUG) {
+  if ([LogKind.INFO as number, LogKind.ERROR as number].includes(logKind)) {
     connection.console.log(
       `====> : ${new Date().toLocaleTimeString()}  : ${
         Object.keys(LogKind)[logKind]

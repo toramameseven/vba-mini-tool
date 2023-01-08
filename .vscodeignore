@@ -9,3 +9,5 @@ contributing.md
 client/node_modules/**
 server/node_modules/**
 vbaSample/**
+**/package-lock.json
+**/.eslintignore

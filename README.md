@@ -39,6 +39,7 @@ They do not work now.
 * This extension works for only the modules in the same folder.
 * Since the context is not taken into account, this extension detects all same symbols.
 * When you jump to the definition, the position may be near near the target position.
+* Sometimes, multi lines(with '_') works fail.
 
 ## How to package
 

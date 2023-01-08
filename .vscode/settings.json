@@ -10,12 +10,5 @@
 		"antlr4ts",
 		"esbuild",
 		"outfile"
-	],
-	"antlr4.generation":{
-		"mode": "external",   // 決め打ち(多分)
-		"language": "CSharp", // 出力したいプログラミング言語名
-		"listeners": true,    // listener形式で出力するか
-		"visitors": true,    // visitor形式で出力するか
-		"outputDir": "parser" // 出力先のフォルダ名
-	}
+	]
 }
