@@ -2,7 +2,7 @@
 	"name": "vba-mini-tool",
 	"displayName": "vba mini tool",
 	"description": "Provide outline and  definition",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"publisher": "toramameseven",
 	"icon": "images/vba-mini-tool.png",
 	"author": {
@@ -79,7 +79,8 @@
 		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
 		"package": "vsce package --target win32-x64",
 		"clear": "rimraf ./client/out && rimraf ./server/out ",
-		"installVSIX": "code --uninstall-extension toramameseven.vba-mini-tool && code -install-extension vba-mini-tool-win32-x64-0.0.1.vsix"
+		"installVSIX": "code --install-extension vba-mini-tool-win32-x64-0.0.2.vsix",
+		"uninstallVSIX": "code --uninstall-extension toramameseven.vba-mini-tool"
 	},
 	"devDependencies": {
 		"@types/mocha": "^9.1.0",
