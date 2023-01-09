@@ -71,5 +71,11 @@ We thank you for the wonderful npm packages.
 
 ## Release Notes
 
+0.0.2
+
+fixed
+
+* configuration is not work.
+
 0.0.1 first release.
 

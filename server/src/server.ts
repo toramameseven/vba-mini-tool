@@ -94,7 +94,7 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 //
-connection.onInitialized(() => {
+connection.onInitialized(async () => {
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
     connection.client.register(
@@ -107,6 +107,11 @@ connection.onInitialized(() => {
       serverLog(LogKind.TRACE, "Workspace folder change event received.");
     });
   }
+
+  globalSettings = await connection.workspace.getConfiguration(
+    "VbaMiniTool.outline"
+  );
+
   serverLog(LogKind.INFO, "onInitialized OK!!");
 });
 
