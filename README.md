@@ -8,9 +8,10 @@ Vba mini tool supports a symbol provider and a definition provider.
 
 This may work on files; *.cls, *.bas, *.frm and *.vbs. associated to Language[Visual Basic].
 
+
 ## Requirements
 
-* Windows 10 (tested only japanese os.)
+* Windows 10
 
 ## How to use
 
@@ -30,9 +31,19 @@ This may work on files; *.cls, *.bas, *.frm and *.vbs. associated to Language[Vi
 
 ## Extension Settings
 
-This extension contributes some settings:
+* VbaMiniTool.outline.variable
 
-They do not work now.
+  when true, shows variables in the outline
+* VbaMiniTool.outline.constant
+
+  when true, shows constants in the outline
+* VbaMiniTool.outline.declare
+
+  when true, shows declare functions in the outline
+
+After changing the configurations, the outline is not refreshed.
+Edit the file or reopen the file.
+
 
 ## Known Issues
 
@@ -40,11 +51,17 @@ They do not work now.
 * Since the context is not taken into account, this extension detects all same symbols.
 * When you jump to the definition, the position may be near near the target position.
 * Sometimes, multi lines(with '_') works fail.
+* Properties are shown as *Function* in the outline.
+* Properties works so so. Sorry.
+* The features we do not recognize do not work well.
+* Api declares are shown as interface.
+* Vba interface is not supported.
 
-## How to package
+## How to package and publish
 
 1. npm install -g vsce
 2. vsce package --target win32-x64
+3. vsce publish
 
 ## Acknowledgments
 
