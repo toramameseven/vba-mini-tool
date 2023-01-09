@@ -21,6 +21,7 @@
 	],
 	"keywords": [
 		"vba",
+		"vbs",
 		"outline",
 		"definition"
 	],
@@ -36,11 +37,23 @@
 		"configuration": {
 			"title": "vba mini tool",
 			"properties": {
-				"VbaMiniTool.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
+				"VbaMiniTool.outline.variable": {
+					"scope": "application",
+					"type": "boolean",
+					"default": "true",
+					"description": "show outline variable."
+				},
+				"VbaMiniTool.outline.constant": {
+					"scope": "application",
+					"type": "boolean",
+					"default": "true",
+					"description": "show outline constant."
+				},
+				"VbaMiniTool.outline.declare": {
+					"scope": "application",
+					"type": "boolean",
+					"default": "true",
+					"description": "show outline declare."
 				},
 				"VbaMiniTool.trace.server": {
 					"scope": "window",
@@ -66,7 +79,7 @@
 		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
 		"package": "vsce package --target win32-x64",
 		"clear": "rimraf ./client/out && rimraf ./server/out ",
-		"installVSIX": "code --install-extension vba-mini-tool-win32-x64-0.0.1.vsix"
+		"installVSIX": "code --uninstall-extension toramameseven.vba-mini-tool && code -install-extension vba-mini-tool-win32-x64-0.0.1.vsix"
 	},
 	"devDependencies": {
 		"@types/mocha": "^9.1.0",

@@ -114,7 +114,10 @@ connection.onInitialized(() => {
 connection.onDocumentSymbol((params: DocumentSymbolParams) => {
   // uri file:///c%3A/projects/hub-toramame/lsp-sample-vba/vbaSample/test.bas
   serverLog(LogKind.TRACE, "onDocumentSymbol", params.textDocument.uri);
-  const symbols = VbaParser.getDocumentSymbol(params.textDocument.uri);
+  const symbols = VbaParser.getDocumentSymbol(
+    params.textDocument.uri,
+    globalSettings
+  );
   return symbols;
 });
 
@@ -122,7 +125,7 @@ connection.onDocumentSymbol((params: DocumentSymbolParams) => {
 connection.onDefinition((params: DefinitionParams) => {
   const funcName = "connection.onDefinition";
   serverLog(LogKind.TRACE, funcName, params.textDocument.uri);
-  const { word, isFunction } = getWordAtPosition(
+  const { word, isAlone } = getWordAtPosition(
     params.textDocument.uri,
     params.position
   );
@@ -131,7 +134,7 @@ connection.onDefinition((params: DefinitionParams) => {
     params.textDocument.uri,
     scopes,
     word,
-    isFunction
+    isAlone
   );
 
   if (!funcInfos || funcInfos?.length === 0) {
@@ -152,19 +155,30 @@ connection.onDefinition((params: DefinitionParams) => {
   return definition;
 });
 
+export interface VbaMiniSettings {
+  variable: boolean;
+  constant: boolean;
+  declare: boolean;
+}
+const defaultSettings: VbaMiniSettings = {
+  variable: true,
+  constant: true,
+  declare: true,
+};
+
+let globalSettings: VbaMiniSettings = defaultSettings;
+
 // now not use.
-connection.onDidChangeConfiguration((change) => {
-  if (hasConfigurationCapability) {
-    // Reset all cached document settings
-    //documentSettings.clear();
-  } else {
-    // //globalSettings = <ExampleSettings>(
-    //   (change.settings.languageServerExample || defaultSettings)
-    // );
-  }
-  serverLog(LogKind.INFO, "onDidChangeConfiguration");
-  // Revalidate all open text documents
-  //documents.all().forEach(validateTextDocument);
+connection.onDidChangeConfiguration(async (change) => {
+  globalSettings = await connection.workspace.getConfiguration(
+    "VbaMiniTool.outline"
+  );
+
+  serverLog(
+    LogKind.TRACE,
+    `${globalSettings.constant}  ${globalSettings.variable}  ${globalSettings.declare}`
+  );
+  serverLog(LogKind.TRACE, "onDidChangeConfiguration");
 });
 
 //
@@ -172,10 +186,11 @@ connection.onHover((params: HoverParams) => {
   const funcName = "connection.onHover";
   serverLog(LogKind.DEBUG, funcName, params.textDocument.uri);
 
-  const { word, isFunction } = getWordAtPosition(
+  const { word, isAlone } = getWordAtPosition(
     params.textDocument.uri,
     params.position
   );
+
   const scopes = getScope(params.textDocument.uri, params.position); //
 
   const funcInfos = VbaParser.getTokenInfo(
@@ -184,7 +199,7 @@ connection.onHover((params: HoverParams) => {
     word,
     // function: f()
     // method: a.f()
-    isFunction
+    isAlone
   );
 
   if (!funcInfos || funcInfos?.length === 0) {
@@ -229,7 +244,7 @@ function getScope(uri: string, position: Position): Scope {
   // 6, (\w+)
   // 5, (Function|Sub|class)
   const functionRegex =
-    /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class)\s+(\w+)|^\s*(End)\s+(Function|Sub|Class)/i;
+    /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class|Property get|Property set|Property let)\s+(\w+)|^\s*(End)\s+(Function|Sub|Class)/i;
   for (let testLine = position.line; testLine > -1; testLine--) {
     const line = document.getText({
       start: { line: testLine, character: 0 },
@@ -280,7 +295,7 @@ function getWordAtPosition(uri: string, position: Position) {
   });
 
   if (!line) {
-    return { word: "", isFunction: false };
+    return { word: "", isAlone: false };
   }
 
   const functionRegex = /\.?\w+/g;
@@ -293,13 +308,13 @@ function getWordAtPosition(uri: string, position: Position) {
     if (lastStart <= character && character < lastEnd) {
       const isMethod = lastMatch.length > 0 && lastMatch[0] === ".";
       const word = isMethod ? lastMatch.slice(1) : lastMatch;
-      return { word, isFunction: !isMethod };
+      return { word, isAlone: !isMethod };
     }
     lastMatch = m[0];
     lastStart = matchIndex;
     lastEnd = matchIndex + lastMatch.length;
   }
-  return { word: "", isFunction: false };
+  return { word: "", isAlone: false };
 }
 
 // The content of a text document has changed. This event is emitted
@@ -347,7 +362,14 @@ export function serverLog(
   message = "",
   message2 = ""
 ) {
-  if ([LogKind.INFO as number, LogKind.ERROR as number].includes(logKind)) {
+  if (
+    [
+      //LogKind.TRACE as number,
+      LogKind.INFO as number,
+      LogKind.ERROR as number,
+      //LogKind.DEBUG as number,
+    ].includes(logKind)
+  ) {
     connection.console.log(
       `====> : ${new Date().toLocaleTimeString()}  : ${
         Object.keys(LogKind)[logKind]

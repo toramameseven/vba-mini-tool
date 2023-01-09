@@ -7,6 +7,11 @@ SampleClass2_Func1
 .common
 common
 
+Point
+.Point
+ObjPoint
+.ObjPoint
+
 Class SampleClass1
 
     dim class1_val

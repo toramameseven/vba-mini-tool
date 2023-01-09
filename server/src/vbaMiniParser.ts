@@ -5,7 +5,13 @@ import {
 } from "vscode-languageserver-textdocument";
 
 import * as path from "path";
-import { serverLog, documents, LogKind, Scope } from "./server";
+import {
+  serverLog,
+  documents,
+  LogKind,
+  Scope,
+  VbaMiniSettings,
+} from "./server";
 import * as fse from "fs-extra";
 import * as Encoding from "encoding-japanese";
 import { fileURLToPath, pathToFileURL } from "url";
@@ -54,7 +60,23 @@ export type LangSymbol = {
 export let mapUriSymbols = new Map<string, LangSymbol[]>();
 let mapUriDiagnostic = new Map<string, Diagnostic[]>();
 
-export async function getDocumentSymbol(uri: string) {
+function selectSymbol(kind: SymbolKind, settings: VbaMiniSettings) {
+  switch (kind) {
+    case SymbolKind.Constant:
+      return settings.constant;
+    case SymbolKind.Variable:
+      return settings.variable;
+    case SymbolKind.Interface:
+      return settings.declare;
+    default:
+      return true;
+  }
+}
+
+export async function getDocumentSymbol(
+  uri: string,
+  settings: VbaMiniSettings
+) {
   await parseFiles(uri);
 
   const funcInfo = mapUriSymbols.get(uri);
@@ -66,7 +88,7 @@ export async function getDocumentSymbol(uri: string) {
 
   function createSymbolArray(symbols: LangSymbol[]) {
     const documentSymbols = symbols
-      .filter((s) => s.kind !== SymbolKind.Variable)
+      .filter((s) => selectSymbol(s.kind, settings))
       .map((symbol) => {
         const documentSymbol: DocumentSymbol = {
           name: symbol.name,
@@ -88,7 +110,7 @@ export function getTokenInfo(
   uri: string,
   scope: Scope,
   name: string,
-  isFunction: boolean
+  isAlone: boolean
 ) {
   const funcName = "getFunctionInfo";
   serverLog(LogKind.DEBUG, funcName, name);
@@ -96,25 +118,13 @@ export function getTokenInfo(
   let symbolList: LangSymbol[] | undefined;
 
   serverLog(LogKind.DEBUG, funcName, "search local function");
-  symbolList = getSymbolList(
-    uri,
-    scope,
-    name,
-    Accessibility.private,
-    isFunction
-  );
+  symbolList = getSymbolList(uri, scope, name, Accessibility.private, isAlone);
   if (symbolList?.length) {
     return symbolList;
   }
 
   serverLog(LogKind.DEBUG, funcName, "search public function");
-  symbolList = getSymbolList(
-    uri,
-    scope,
-    name,
-    Accessibility.public,
-    isFunction
-  );
+  symbolList = getSymbolList(uri, scope, name, Accessibility.public, isAlone);
   if (symbolList?.length) {
     return symbolList;
   }
@@ -135,7 +145,7 @@ function getSymbolList(
   scope: Scope,
   name: string,
   accessibility: Accessibility,
-  isFunction: boolean
+  isAlone: boolean
 ) {
   const funcName = "getSymbolList";
   serverLog(
@@ -145,7 +155,7 @@ function getSymbolList(
       scope.classScope
     }  functionScope: ${
       scope.functionScope
-    }  name: ${name} access: ${accessibility} isFunction: ${isFunction}`
+    }  name: ${name} access: ${accessibility} isAlone: ${isAlone}`
   );
 
   const isVbs = uri.length > 3 && uri.slice(-3).toLowerCase() === "vbs";
@@ -198,7 +208,7 @@ function getSymbolList(
     }
 
     //class val class func
-    if (!scope.functionScope && scope.classScope && isVbs && !isFunction) {
+    if (!scope.functionScope && scope.classScope && isVbs && !isAlone) {
       const moduleSymbol = mapUriSymbols
         ?.get(iUri)
         ?.find((s) => stringEq(s.name, scope.classScope))
@@ -231,7 +241,7 @@ function getSymbolList(
   for (const iUri of publicUris) {
     serverLog(LogKind.DEBUG, funcName, iUri);
 
-    if (iUri.slice(-3).toLowerCase() === "cls" && isFunction) {
+    if (iUri.slice(-3).toLowerCase() === "cls" && isAlone) {
       continue;
     }
     // public
@@ -252,7 +262,7 @@ function getSymbolList(
 
     // public
     // get class symbols
-    if (isVbs && !isFunction) {
+    if (isVbs && !isAlone) {
       // do only in a class
       const symbolsInClass = mapUriSymbols
         ?.get(iUri)
@@ -442,7 +452,7 @@ function parseEnd(
     return "";
   }
   const endRegex =
-    /^\s*((End)\s+)((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|Class)/i;
+    /^\s*((End)\s+)((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|Class|Property)/i;
   const endMatches = contentLine.match(endRegex);
   if (endMatches) {
     parentTree.pop();
@@ -461,8 +471,12 @@ function parseFunction(
   if (!contentLine) {
     return "";
   }
+
+  // Public Property Get ObjPoint
+  // Public Property Set ObjPoint(obj)
+
   const functionRegex =
-    /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class)\s+(\w+)(\((.*)\))?/i;
+    /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class|Property get|Property set|Property let)\s+(\w+)(\((.*)\))?/i;
   const functionMatches = contentLine.match(functionRegex);
 
   if (functionMatches) {
@@ -477,7 +491,7 @@ function parseFunction(
     };
     const { extensionType, moduleName } = getModuleInfo(uri);
     const posDeclare = functionMatches[4]?.toString().toLowerCase() ?? "";
-    const isDeclare = ["declare", "decare ptrsafe"].includes(posDeclare);
+    const isDeclare = ["declare", "declare ptrsafe"].includes(posDeclare);
     let kind: SymbolKind = stringEq(functionMatches[5], "class")
       ? SymbolKind.Class
       : SymbolKind.Function;
