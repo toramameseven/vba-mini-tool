@@ -480,9 +480,10 @@ function parseFunction(
   const functionMatches = contentLine.match(functionRegex);
 
   if (functionMatches) {
-    const accessibilityString = functionMatches[2]?.toLowerCase();
+    const accessibilityString =
+      functionMatches[2]?.toLowerCase() ?? Accessibility.private;
     const accessibility: Accessibility =
-      accessibilityString === "private"
+      accessibilityString.toLowerCase() === "private"
         ? Accessibility.private
         : Accessibility.public;
     const rangeFunc: Range = {
@@ -564,7 +565,7 @@ function parseVariable(
       functionDef = parentTree[parentTree.length - 1].name + "::" + functionDef;
     }
     for (let i = 0; i < parameters.length; i++) {
-      //const accessibility = result_array[1] ? result_array[1] : Accessibility.public;
+      const accessibility = result_array[2] ?? Accessibility.public;
       const symbol: LangSymbol = {
         uri: parent.uri,
         moduleName: parent.moduleName,
@@ -575,7 +576,7 @@ function parseVariable(
         },
         name: parameters[i] ?? "",
         kind,
-        accessibility: result_array[1] ?? Accessibility.public,
+        accessibility: accessibility.toLowerCase(),
         functionDef,
         child: [],
         scope: "",
