@@ -30,7 +30,10 @@
     "url": "https://github.com/toramameseven/vba-mini-tool"
   },
   "activationEvents": [
-    "onLanguage:vb"
+    "workspaceContains:**/*.cls",
+    "workspaceContains:**/*.bas",
+    "workspaceContains:**/*.frm",
+    "workspaceContains:**/*.vbs"
   ],
   "main": "./client/out/extension",
   "contributes": {

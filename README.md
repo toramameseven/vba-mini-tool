@@ -6,25 +6,11 @@ This is the **Vba mini tool**.
 
 Vba mini tool supports a symbol provider and a definition provider.
 
-This may work on files; *.cls, *.bas, *.frm and *.vbs. associated to Language[Visual Basic].
-
-
 ## Requirements
 
 * Windows 10
 
 ## How to use
-
-* Set language **Visual Basic**. Sample vscode settings.
-
-```json
-  "files.associations": {
-    "*.bas": "vb",
-    "*.cls": "vb",
-    "*.frm": "vb",
-    "*.vbs": "vb",
-  },
-```
 
 * Hover a symbol, shows definition.
 * Goto definition or Ctrl + Left click, goes to the definition.
@@ -75,14 +61,18 @@ We thank you for the wonderful npm packages.
 
 fixed
 
-* public variables in a class are not detected.
-* add test code.
+* Public variables in a class are not detected. And some fixes.
+
+add
+
+* You can use your favorite language syntax.
+* Add test code.
 
 0.0.2
 
 fixed
 
-* configuration is not work.
+* Configurations are not work.
 
 0.0.1 first release.
 

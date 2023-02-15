@@ -20,11 +20,11 @@ export async function activate(docUri: vscode.Uri, wait = 2000) {
   try {
     const ext = vscode.extensions.getExtension("toramameseven.vba-mini-tool")!;
     await ext.activate();
-    const uri = vscode.Uri.file("C:\\home\\tora-hub\\vba-mini-tool\\vbaSample");
-    const success = await vscode.commands.executeCommand(
-      "vscode.openFolder",
-      uri
-    );
+    // const uri = vscode.Uri.file("C:\\home\\tora-hub\\vba-mini-tool\\vbaSample");
+    // const success = await vscode.commands.executeCommand(
+    //   "vscode.openFolder",
+    //   uri
+    // );
 
     doc = await vscode.workspace.openTextDocument(docUri);
     editor = await vscode.window.showTextDocument(doc);

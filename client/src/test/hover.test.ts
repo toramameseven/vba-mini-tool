@@ -30,12 +30,12 @@ suite("=====suite hover test Class1.cls", async () => {
   });
 });
 
-suite("====suite hover test Module1", async () => {
-  const docUri = getDocUri("Module1.bas");
-  setup(createExpectedModule1);
+suite("====suite hover test Module2", async () => {
+  const docUri = getDocUri("Module2.bas");
+  setup(createExpectedModule2);
 
-  test("hover test Module1", async () => {
-    for await (const i of module1Sample) {
+  test("hover test Module2", async () => {
+    for await (const i of module2Sample) {
       await testHoversEx(docUri, i.line, i.column, i.value);
     }
   });
@@ -62,7 +62,8 @@ async function createSampleHovers(
     docUri,
     position //new vscode.Position(14, 10)
   );
-  if (actualHovers) {
+
+  if (actualHovers.length > 0) {
     actualHovers.forEach((hover, i) => {
       hover.contents.forEach((markdownString: vscode.MarkdownString) => {
         console.log(`{
@@ -72,22 +73,31 @@ async function createSampleHovers(
 },`);
       });
     });
+  } else {
+    console.log(`{
+  line: ${line},
+  column: ${column},
+  value: ""
+},`);
   }
 }
 
 //
-async function createExpectedModule1() {
-  const docUri = getDocUri("Module1.bas");
+async function createExpectedModule2() {
+  const docUri = getDocUri("Module2.bas");
   await activate(docUri);
 
   await createSampleHovers(docUri, 4, 12);
   await createSampleHovers(docUri, 5, 12);
   await createSampleHovers(docUri, 6, 12);
   await createSampleHovers(docUri, 9, 15);
-  await createSampleHovers(docUri, 11, 15);
-  await createSampleHovers(docUri, 14, 15);
-  await createSampleHovers(docUri, 18, 13);
-  await createSampleHovers(docUri, 19, 18);
+  await createSampleHovers(docUri, 10, 15);
+  await createSampleHovers(docUri, 18, 10);
+  await createSampleHovers(docUri, 19, 10);
+  await createSampleHovers(docUri, 20, 15);
+  await createSampleHovers(docUri, 21, 6);
+  await createSampleHovers(docUri, 22, 16);
+  await createSampleHovers(docUri, 23, 18);
 }
 
 //
@@ -174,8 +184,8 @@ async function testHoversEx(
     position //new vscode.Position(14, 10)
   );
 
-  assert.equal(actualHovers.length, 1, "no hover");
-  if (actualHovers) {
+  assert.equal(actualHovers.length, value ? 1 : 0, "no hover");
+  if (actualHovers.length > 0) {
     actualHovers.forEach((hover, i) => {
       hover.contents.forEach((markdownString: vscode.MarkdownString) => {
         assert.equal(
@@ -187,44 +197,59 @@ async function testHoversEx(
   }
 }
 
-const module1Sample = [
+const module2Sample = [
   {
     line: 4,
     column: 12,
-    value: "```vbDim Module1_Dim_Val```",
+    value: "```vbDim Module2_Dim_Val```",
   },
   {
     line: 5,
     column: 12,
-    value: "```vbPublic Module1_Public_Val```",
+    value: "```vbPublic Module2_Public_Val```",
   },
   {
     line: 6,
     column: 12,
-    value: "```vbPrivate Module1_Private_Val```",
+    value: "```vbPrivate Module2_Private_Val```",
   },
   {
     line: 9,
     column: 15,
-    value: "```vbPublic Sub Module1()```",
+    value: "```vbPublic Sub Module2()```",
   },
   {
-    line: 11,
+    line: 10,
     column: 15,
-    value: "```vbPublic Module2_Public_Val```",
-  },
-  {
-    line: 14,
-    column: 15,
-    value: "```vbPublic Sub Common()```",
+    value: "",
   },
   {
     line: 18,
-    column: 13,
-    value: "```vbPublic Sub Log(ByRef msg As String)```",
+    column: 10,
+    value: "```vbDim ccc As Class1```",
   },
   {
     line: 19,
+    column: 10,
+    value: "```vbDim ccc As Class1```",
+  },
+  {
+    line: 20,
+    column: 15,
+    value: "```vbPublic class_public As String```",
+  },
+  {
+    line: 21,
+    column: 6,
+    value: "```vbDim ccc As Class1```",
+  },
+  {
+    line: 22,
+    column: 16,
+    value: "```vbPublic Function Public_Function() As String```",
+  },
+  {
+    line: 23,
     column: 18,
     value: "```vbByRef msg As String```",
   },
