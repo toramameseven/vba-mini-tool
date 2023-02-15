@@ -80,7 +80,7 @@
     "esbuild-base-server": "esbuild ./server/src/server.ts --bundle --outfile=./server/out/server.js --external:vscode --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap && npm run esbuild-base-server -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "package": "vsce package --target win32-x64",
+    "package": "npm run clear && vsce package --target win32-x64",
     "clear": "rimraf ./client/out && rimraf ./server/out ",
     "installVSIX": "code --install-extension vba-mini-tool-win32-x64-0.0.3.vsix",
     "uninstallVSIX": "code --uninstall-extension toramameseven.vba-mini-tool",

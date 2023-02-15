@@ -11,3 +11,4 @@ server/node_modules/**
 vbaSample/**
 **/package-lock.json
 **/.eslintignore
+scripts
