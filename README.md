@@ -71,6 +71,13 @@ We thank you for the wonderful npm packages.
 
 ## Release Notes
 
+0.0.3
+
+fixed
+
+* public variables in a class are not detected.
+* add test code.
+
 0.0.2
 
 fixed
