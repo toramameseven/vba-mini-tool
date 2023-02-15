@@ -135,7 +135,7 @@ connection.onDefinition((params: DefinitionParams) => {
     params.position
   );
   const scopes = getScope(params.textDocument.uri, params.position);
-  const funcInfos = VbaParser.getTokenInfo(
+  const funcInfos = VbaParser.getSymbolList(
     params.textDocument.uri,
     scopes,
     word,
@@ -165,6 +165,7 @@ export interface VbaMiniSettings {
   constant: boolean;
   declare: boolean;
 }
+
 const defaultSettings: VbaMiniSettings = {
   variable: true,
   constant: true,
@@ -198,7 +199,9 @@ connection.onHover((params: HoverParams) => {
 
   const scopes = getScope(params.textDocument.uri, params.position); //
 
-  const funcInfos = VbaParser.getTokenInfo(
+  serverLog(LogKind.DEBUG, funcName, scopes.classScope, scopes.functionScope);
+
+  const funcInfos = VbaParser.getSymbolList(
     params.textDocument.uri,
     scopes,
     word,
@@ -246,7 +249,7 @@ function getScope(uri: string, position: Position): Scope {
 
   // 8, (Function|Sub|Class)
   // 7, (end)
-  // 6, (\w+)
+  // 6, (\w+) function name
   // 5, (Function|Sub|class)
   const functionRegex =
     /^\s*((Public|Private|Friend)\s+)?((Static|Declare|Declare PtrSafe)\s+)?(Function|Sub|class|Property get|Property set|Property let)\s+(\w+)|^\s*(End)\s+(Function|Sub|Class)/i;
@@ -262,20 +265,20 @@ function getScope(uri: string, position: Position): Scope {
         matches[7]?.toLowerCase() === "end" &&
         matches[8]?.toLowerCase() === "class"
       ) {
-        serverLog(LogKind.TRACE, funcName, "match to End");
-        classScope = matches[8];
-        // inside vbs class
+        serverLog(LogKind.TRACE, funcName, "match a class End");
+        classScope = ""; //matches[8].toLowerCase();
+        // outside vbs class
         return { classScope, functionScope };
-      } else if (!functionScope && matches[7]?.toLowerCase() === "end") {
-        // end function or end sub
-        functionScope = matches[8];
-        // next class search
-        serverLog(
-          LogKind.TRACE,
-          funcName,
-          "match to sub or function",
-          matches[6]
-        );
+        // } else if (!functionScope && matches[7]?.toLowerCase() === "end") {
+        //   // end function or end sub
+        //   functionScope = matches[8];
+        //   // next class search
+        //   serverLog(
+        //     LogKind.TRACE,
+        //     funcName,
+        //     "match to sub or function",
+        //     matches[6]
+        //   );
       } else if (!classScope && matches[5]?.toLowerCase() === "class") {
         classScope = matches[6];
         return { classScope, functionScope };
@@ -372,7 +375,7 @@ export function serverLog(
       //LogKind.TRACE as number,
       LogKind.INFO as number,
       LogKind.ERROR as number,
-      //LogKind.DEBUG as number,
+      // LogKind.DEBUG as number,
     ].includes(logKind)
   ) {
     connection.console.log(
