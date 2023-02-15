@@ -375,7 +375,7 @@ export function serverLog(
       //LogKind.TRACE as number,
       LogKind.INFO as number,
       LogKind.ERROR as number,
-      LogKind.DEBUG as number,
+      //LogKind.DEBUG as number,
     ].includes(logKind)
   ) {
     connection.console.log(
