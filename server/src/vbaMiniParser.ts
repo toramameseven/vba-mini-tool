@@ -23,8 +23,6 @@ import {
   SymbolKind,
 } from "vscode-languageserver";
 import { URI } from "vscode-uri";
-import { ByteLengthQueuingStrategy } from "stream/web";
-import { isVariableDeclaration } from "typescript";
 
 const Accessibility = {
   public: "public",
@@ -32,15 +30,15 @@ const Accessibility = {
 };
 type Accessibility = typeof Accessibility[keyof typeof Accessibility];
 
-const Extensions = {
-  cls: "cls",
-  bas: "bas",
-  frm: "frm",
-  vbs: "vbs",
-  non: "non",
-} as const;
-type Extensions = keyof typeof Extensions;
-// type Extensions = typeof Extensions[keyof typeof Extensions];
+// const Extensions = {
+//   cls: "cls",
+//   bas: "bas",
+//   frm: "frm",
+//   vbs: "vbs",
+//   non: "non",
+// } as const;
+// type Extensions = keyof typeof Extensions;
+// // type Extensions = typeof Extensions[keyof typeof Extensions];
 
 export type LangSymbol = {
   uri: string;
@@ -57,7 +55,7 @@ export type LangSymbol = {
 };
 
 // <uri, symbol[]>
-export let mapUriSymbols = new Map<string, LangSymbol[]>();
+let mapUriSymbols = new Map<string, LangSymbol[]>();
 let mapUriDiagnostic = new Map<string, Diagnostic[]>();
 
 function selectSymbol(kind: SymbolKind, settings: VbaMiniSettings) {
@@ -106,7 +104,7 @@ export async function getDocumentSymbol(
   }
 }
 
-export function getTokenInfo(
+export function getSymbolList(
   uri: string,
   scope: Scope,
   name: string,
@@ -118,13 +116,25 @@ export function getTokenInfo(
   let symbolList: LangSymbol[] | undefined;
 
   serverLog(LogKind.DEBUG, funcName, "search local function");
-  symbolList = getSymbolList(uri, scope, name, Accessibility.private, isAlone);
+  symbolList = getSymbolListCore(
+    uri,
+    scope,
+    name,
+    Accessibility.private,
+    isAlone
+  );
   if (symbolList?.length) {
     return symbolList;
   }
 
   serverLog(LogKind.DEBUG, funcName, "search public function");
-  symbolList = getSymbolList(uri, scope, name, Accessibility.public, isAlone);
+  symbolList = getSymbolListCore(
+    uri,
+    scope,
+    name,
+    Accessibility.public,
+    isAlone
+  );
   if (symbolList?.length) {
     return symbolList;
   }
@@ -140,22 +150,24 @@ export function getTokenInfo(
 // module class    function
 // module class    function variable
 
-function getSymbolList(
+function getSymbolListCore(
   uri: string,
   scope: Scope,
-  name: string,
+  targetWord: string,
   accessibility: Accessibility,
   isAlone: boolean
 ) {
-  const funcName = "getSymbolList";
+  const funcName = "getSymbolListCore";
   serverLog(
-    LogKind.DEBUG,
+    LogKind.TRACE,
     funcName,
-    `file: ${path.basename(uri)} classScope: ${
-      scope.classScope
-    }  functionScope: ${
-      scope.functionScope
-    }  name: ${name} access: ${accessibility} isAlone: ${isAlone}`
+    `
+file: ${path.basename(uri)} 
+classScope: ${scope.classScope}  
+functionScope: ${scope.functionScope}  
+name: ${targetWord} 
+access: ${accessibility}
+isAlone: ${isAlone}`
   );
 
   const isVbs = uri.length > 3 && uri.slice(-3).toLowerCase() === "vbs";
@@ -163,24 +175,30 @@ function getSymbolList(
   const publicUris =
     accessibility === Accessibility.public ? mapUriSymbols.keys() : [];
 
-  // loop all files, but one file.
+  // loop all files, but one file for private.
   for (const iUri of privateUri) {
-    // local val
+    // local variable and function(include sub)
     if (scope.functionScope && !scope.classScope) {
       let moduleSymbol = mapUriSymbols
         ?.get(iUri)
-        ?.find((s) => stringEq(s.name, scope.functionScope))
-        ?.child.find((s) => stringEq(s.name, name));
+        ?.find((langSymbol) => stringEq(langSymbol.name, scope.functionScope))
+        ?.child.find((childLangSymbol) =>
+          stringEq(childLangSymbol.name, targetWord)
+        );
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return local val.");
+        serverLog(
+          LogKind.DEBUG,
+          funcName,
+          "return a variable in the function."
+        );
         return [moduleSymbol];
       }
 
       moduleSymbol = mapUriSymbols
         ?.get(iUri)
-        ?.find((s) => stringEq(s.name, name));
+        ?.find((langSymbol) => stringEq(langSymbol.name, targetWord));
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return local func.");
+        serverLog(LogKind.DEBUG, funcName, "return a function in the module.");
         return [moduleSymbol];
       }
     }
@@ -189,46 +207,74 @@ function getSymbolList(
     if (scope.functionScope && scope.classScope && isVbs) {
       let moduleSymbol = mapUriSymbols
         ?.get(iUri)
-        ?.find((s) => stringEq(s.name, scope.classScope))
-        ?.child.find((s) => stringEq(s.name, scope.functionScope))
-        ?.child.find((s) => stringEq(s.name, name));
+        ?.find((langSymbol) => stringEq(langSymbol.name, scope.classScope))
+        ?.child.find((childLangSymbol) =>
+          stringEq(childLangSymbol.name, scope.functionScope)
+        )
+        ?.child.find((subChildLangSymbol) =>
+          stringEq(subChildLangSymbol.name, targetWord)
+        );
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return class local val.");
+        serverLog(
+          LogKind.DEBUG,
+          funcName,
+          "return a local variable in the file."
+        );
         return [moduleSymbol];
       }
 
       moduleSymbol = mapUriSymbols
         ?.get(iUri)
-        ?.find((s) => stringEq(s.name, scope.classScope))
-        ?.child.find((s) => stringEq(s.name, name));
+        ?.find((langSymbol) => stringEq(langSymbol.name, scope.classScope))
+        ?.child.find((childLangSymbol) =>
+          stringEq(childLangSymbol.name, targetWord)
+        );
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return class local func.");
+        serverLog(LogKind.DEBUG, funcName, "return a function in the class.");
         return [moduleSymbol];
       }
     }
 
     //class val class func
-    if (!scope.functionScope && scope.classScope && isVbs && !isAlone) {
+    if (!scope.functionScope && scope.classScope && isVbs) {
       const moduleSymbol = mapUriSymbols
         ?.get(iUri)
-        ?.find((s) => stringEq(s.name, scope.classScope))
-        ?.child.find((s) => stringEq(s.name, name));
+        ?.find((langSymbol) => stringEq(langSymbol.name, scope.classScope))
+        ?.child.find((childLangSymbol) =>
+          stringEq(childLangSymbol.name, targetWord)
+        );
       if (moduleSymbol) {
-        serverLog(LogKind.DEBUG, funcName, "return class func val.");
+        serverLog(
+          LogKind.DEBUG,
+          funcName,
+          "return a function or a variable in the class module."
+        );
         return [moduleSymbol];
       }
     }
+
+    // //class val class func
+    // if (!scope.functionScope && scope.classScope && isVbs && !isAlone) {
+    //   const moduleSymbol = mapUriSymbols
+    //     ?.get(iUri)
+    //     ?.find((s) => stringEq(s.name, scope.classScope))
+    //     ?.child.find((s) => stringEq(s.name, targetWord));
+    //   if (moduleSymbol) {
+    //     serverLog(LogKind.DEBUG, funcName, "return class func val.");
+    //     return [moduleSymbol];
+    //   }
+    // }
 
     //module val module func
     if (!scope.functionScope && !scope.classScope) {
       const moduleSymbol = mapUriSymbols
         ?.get(iUri)
-        ?.find((s) => stringEq(s.name, name));
+        ?.find((langSymbol) => stringEq(langSymbol.name, targetWord));
       if (moduleSymbol) {
         serverLog(
           LogKind.DEBUG,
           funcName,
-          "return function or variable in a module."
+          "return a function or a variable in the module."
         );
         return [moduleSymbol];
       }
@@ -241,6 +287,14 @@ function getSymbolList(
   for (const iUri of publicUris) {
     serverLog(LogKind.DEBUG, funcName, iUri);
 
+    if (isVbs && getModuleInfo(iUri).extensionType !== "vbs") {
+      continue;
+    }
+
+    if (!isVbs && getModuleInfo(iUri).extensionType === "vbs") {
+      continue;
+    }
+
     if (iUri.slice(-3).toLowerCase() === "cls" && isAlone) {
       continue;
     }
@@ -249,7 +303,9 @@ function getSymbolList(
     const topLevelSymbols = mapUriSymbols
       ?.get(iUri)
       ?.filter(
-        (s) => stringEq(s.name, name) && s.accessibility === accessibility
+        (langSymbol) =>
+          stringEq(langSymbol.name, targetWord) &&
+          langSymbol.accessibility === accessibility
       );
     if (topLevelSymbols && topLevelSymbols.length) {
       serverLog(
@@ -266,21 +322,21 @@ function getSymbolList(
       // do only in a class
       const symbolsInClass = mapUriSymbols
         ?.get(iUri)
-        ?.filter((s) => s.kind === SymbolKind.Class);
+        ?.filter((langSymbol) => langSymbol.kind === SymbolKind.Class);
 
-      // get public functions and variables in class
-      // local variables are open to outside
+      // get public functions and variables in the vbs class.
       for (const iClass of symbolsInClass ?? []) {
         const classFunctions = iClass.child.filter(
           (s) =>
-            stringEq(s.name, name) && s.accessibility === Accessibility.public
+            stringEq(s.name, targetWord) &&
+            s.accessibility === Accessibility.public
         );
 
         if (!!classFunctions && !!classFunctions.length) {
           serverLog(
             LogKind.DEBUG,
             funcName,
-            "get public function or variable in classes."
+            "get public function or public variable in the vbs classes."
           );
           moduleSymbolPublic = moduleSymbolPublic?.concat(classFunctions);
         }
@@ -312,6 +368,9 @@ async function parseFiles(uri: string) {
   // get files in folder
   const files = fse.readdirSync(moduleFolder);
   const extensions = [".bas", ".frm", ".cls", ".vbs"];
+
+  const extensionsVbs = [".vbs"];
+  const extensionsVba = [".bas", ".frm", ".cls"];
 
   for (const file of files) {
     const fullPath = path.resolve(moduleFolder, file);
@@ -480,7 +539,9 @@ function parseFunction(
   const functionMatches = contentLine.match(functionRegex);
 
   if (functionMatches) {
-    const accessibilityString = functionMatches[2]?.toLowerCase();
+    const accessibilityString = functionMatches[2]
+      ? functionMatches[2].toLowerCase()
+      : Accessibility.public;
     const accessibility: Accessibility =
       accessibilityString === "private"
         ? Accessibility.private
@@ -564,7 +625,9 @@ function parseVariable(
       functionDef = parentTree[parentTree.length - 1].name + "::" + functionDef;
     }
     for (let i = 0; i < parameters.length; i++) {
-      //const accessibility = result_array[1] ? result_array[1] : Accessibility.public;
+      const accessibility = result_array[2]
+        ? result_array[2]
+        : Accessibility.private;
       const symbol: LangSymbol = {
         uri: parent.uri,
         moduleName: parent.moduleName,
@@ -575,7 +638,7 @@ function parseVariable(
         },
         name: parameters[i] ?? "",
         kind,
-        accessibility: result_array[1] ?? Accessibility.public,
+        accessibility: accessibility.toLowerCase(),
         functionDef,
         child: [],
         scope: "",
@@ -621,7 +684,7 @@ function getFunctionParameter(
   }
 }
 
-export function splitParameters(parameters: string) {
+function splitParameters(parameters: string) {
   const regex = /,(?=([^()"]*[()"][^()"]*[()"])*[^()"]*$)/;
   const parameterList = parameters.split(regex).filter(Boolean);
 
@@ -670,7 +733,7 @@ export function splitParameters(parameters: string) {
 //   return diagnostic;
 // }
 
-export function getModuleInfo(uriOrPath: string) {
+function getModuleInfo(uriOrPath: string) {
   const moduleFileName = path.basename(uriOrPath);
   const moduleName_ext = moduleFileName.split(".");
   // if *.sht.cls, you get *
