@@ -1,8 +1,8 @@
 {
   "name": "vba-mini-tool",
   "displayName": "vba mini tool",
-  "description": "Provide outline and  definition",
-  "version": "0.0.3",
+  "description": "Provide outline and definition",
+  "version": "0.0.4",
   "publisher": "toramameseven",
   "icon": "images/vba-mini-tool.png",
   "author": {
@@ -33,6 +33,7 @@
     "workspaceContains:**/*.cls",
     "workspaceContains:**/*.bas",
     "workspaceContains:**/*.frm",
+    "workspaceContains:**/*.vb",
     "workspaceContains:**/*.vbs"
   ],
   "main": "./client/out/extension",

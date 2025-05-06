@@ -367,7 +367,7 @@ async function parseFiles(uri: string) {
   mapUriDiagnostic = new Map<string, Diagnostic[]>();
   // get files in folder
   const files = fse.readdirSync(moduleFolder);
-  const extensions = [".bas", ".frm", ".cls", ".vbs"];
+  const extensions = [".bas", ".frm", ".cls", ".vbs", ".vb"];
 
   const extensionsVbs = [".vbs"];
   const extensionsVba = [".bas", ".frm", ".cls"];

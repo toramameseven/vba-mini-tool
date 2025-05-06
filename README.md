@@ -57,6 +57,12 @@ We thank you for the wonderful npm packages.
 
 ## Release Notes
 
+0.0.4
+
+add
+
+* Include `.vb` files as targets for this extension as well
+
 0.0.3
 
 fixed
